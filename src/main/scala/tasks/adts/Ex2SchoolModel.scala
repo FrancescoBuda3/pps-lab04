@@ -126,26 +126,48 @@ object SchoolModel:
     def course(name: String): Course = CourseImpl(name)
     def emptySchool: School = SchoolImpl(nil())
 
+
+
     extension (school: School)
       def courses: Sequence[String] = school match
-        case SchoolImpl(s) => s.flatMap((t, c) => c.map(co => co.name))
+        case SchoolImpl(s) => s.flatMap((t, c) => c.map(co => co match
+          case CourseImpl(name) => name
+        ))
       def teachers: Sequence[String] = school match
-        case SchoolImpl(s) => s.map((t, c) => t.name)
+        case SchoolImpl(s) => s.map((t, c) => t match
+          case TeacherImpl(name) => name
+        )
       def setTeacherToCourse(teacher: Teacher, course: Course): School = school match
-        case SchoolImpl(classes) if classes.filter((t, c) => t.name == teacher.name) == nil()
+        case SchoolImpl(classes) if classes.filter((t, c) => (t, teacher) match
+          case (TeacherImpl(n1), TeacherImpl(n2)) if n1 == n2 => true
+          case _ => false
+        ) == nil()
         => SchoolImpl(cons((teacher, cons(course, nil())), classes))
-        case SchoolImpl(classes) => SchoolImpl(classes.map((t, c) => t match
-          case t if t.name == teacher.name => (t, cons(course, c))
+        case SchoolImpl(classes) => SchoolImpl(classes.map((t, c) => (t, teacher) match
+          case (TeacherImpl(n1), TeacherImpl(n2)) if n1 == n2 => (t, cons(course, c))
           case _ => (t, c)
         ))
       def coursesOfATeacher(teacher: Teacher): Sequence[Course] = school match
-          case SchoolImpl(classes) => classes.filter((t, c) => t.name == teacher.name) match
+          case SchoolImpl(classes) => classes.filter((t, c) => (t, teacher) match
+            case (TeacherImpl(n1), TeacherImpl(n2)) if n1 == n2 => true
+            case _ => false
+          ) match
             case Cons((t, c), Nil()) => c
             case _ => Nil()
-      def hasTeacher(name: String): Boolean =
-        if school.classes.filter((t, c) => t.name == name) == Nil() then false else true
-      def hasCourse(name: String): Boolean =
-        if school.classes.flatMap((t, c) => c).filter(c => c.name == name) == Nil() then false else true
+      def hasTeacher(name: String): Boolean = school match
+        case SchoolImpl(classes) => classes.filter(
+          (t, c) => (t, name) match
+            case (TeacherImpl(n1), n2) if n1 == n2 => true
+            case _ => false
+        ) != Nil()
+      def hasCourse(name: String): Boolean = school match
+        case SchoolImpl(classes) => classes
+          .flatMap((t, c) => c)
+          .filter(
+            c => (c, name) match
+              case (CourseImpl(n1), n2) if n1 == n2 => true
+              case _ => false
+          ) != Nil()
 @main def examples(): Unit =
   import SchoolModel.BasicSchoolModule.*
   val school = emptySchool
